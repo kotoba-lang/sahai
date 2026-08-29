@@ -13,7 +13,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.data.json :as json]
+            [json.data-json :as json]
             [kotoba.security.effect :as effect]
             [sahai.core :as fleet])
   (:import (java.net URI URLEncoder)
