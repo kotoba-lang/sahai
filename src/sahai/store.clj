@@ -115,16 +115,23 @@
         (Base64/getEncoder)
         (.getBytes (str id ":" key) StandardCharsets/UTF_8))))
 
+(def ^:private b2-authorize-endpoint
+  "Authorization endpoint for b2_authorize_account. Defaults to the fixed
+   public B2 authorization host; B2_API_URL overrides it for staging mirrors
+   and tests rebind the atom directly (no production env needed). The
+   fail-closed credential guard below is independent of the endpoint."
+  (atom (or (env "B2_API_URL")
+            "https://api.backblazeb2.com/b2api/v2/b2_authorize_account")))
+
 (defn b2-authorization-decision
-  "Fail closed before credentials can reach the fixed B2 authorization host."
+  "Fail closed before credentials can reach the configured B2 authorization host."
   [{:keys [key-id app-key]}]
   (let [violations (cond-> []
                      (str/blank? key-id) (conj :key-id-required)
                      (str/blank? app-key) (conj :application-key-required))]
     {:b2-authorization/allowed? (empty? violations)
      :b2-authorization/violations violations
-     :b2-authorization/endpoint
-     "https://api.backblazeb2.com/b2api/v2/b2_authorize_account"}))
+     :b2-authorization/endpoint @b2-authorize-endpoint}))
 
 (defn- b2-authorize!
   "b2_authorize_account → {:api-url :auth-token :download-url :account-id}"
@@ -139,7 +146,7 @@
     :effect
     (fn [_decision]
       (let [req (-> (HttpRequest/newBuilder
-                     (URI/create "https://api.backblazeb2.com/b2api/v2/b2_authorize_account"))
+                     (URI/create @b2-authorize-endpoint))
                     (.header "Authorization" (basic-auth key-id app-key))
                     (.GET)
                     .build)
