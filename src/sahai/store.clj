@@ -13,7 +13,8 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [json.data-json :as json]
+            [clojure.walk :as walk]
+            [json.core :as json]
             [kotoba.security.effect :as effect]
             [sahai.core :as fleet])
   (:import (java.net URI URLEncoder)
@@ -146,7 +147,7 @@
         (when-not (<= 200 (.statusCode resp) 299)
           (throw (ex-info "b2_authorize_account failed"
                           {:status (.statusCode resp) :body (.body resp)})))
-        (let [body (json/read-str (.body resp) :key-fn keyword)]
+        (let [body (walk/keywordize-keys (json/decode (.body resp)))]
           {:api-url (:apiUrl body)
            :auth-token (:authorizationToken body)
            :download-url (:downloadUrl body)
@@ -159,11 +160,11 @@
                 (.header "Authorization" (:auth-token auth))
                 (.header "Content-Type" "application/json")
                 (.POST (HttpRequest$BodyPublishers/ofString
-                        (json/write-str {:accountId (:account-id auth)
+                        (json/encode {:accountId (:account-id auth)
                                          :bucketName bucket-name})))
                 .build)
         resp (.send (http-client) req (HttpResponse$BodyHandlers/ofString))
-        body (json/read-str (.body resp) :key-fn keyword)
+        body (walk/keywordize-keys (json/decode (.body resp)))
         buckets (:buckets body)
         match (first (filter #(= bucket-name (:bucketName %)) buckets))]
     (when-not match
@@ -177,10 +178,10 @@
                 (.header "Authorization" (:auth-token auth))
                 (.header "Content-Type" "application/json")
                 (.POST (HttpRequest$BodyPublishers/ofString
-                        (json/write-str {:bucketId bucket-id})))
+                        (json/encode {:bucketId bucket-id})))
                 .build)
         resp (.send (http-client) req (HttpResponse$BodyHandlers/ofString))
-        body (json/read-str (.body resp) :key-fn keyword)]
+        body (walk/keywordize-keys (json/decode (.body resp)))]
     (when-not (<= 200 (.statusCode resp) 299)
       (throw (ex-info "b2_get_upload_url failed" {:status (.statusCode resp) :body (.body resp)})))
     {:upload-url (:uploadUrl body)
@@ -207,7 +208,7 @@
         resp (.send (http-client) req (HttpResponse$BodyHandlers/ofString))]
     (when-not (<= 200 (.statusCode resp) 299)
       (throw (ex-info "b2 upload failed" {:status (.statusCode resp) :body (.body resp)})))
-    (json/read-str (.body resp) :key-fn keyword)))
+    (walk/keywordize-keys (json/decode (.body resp)))))
 
 (defn- b2-download-by-name!
   [auth bucket-name file-name]
