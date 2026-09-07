@@ -1,6 +1,6 @@
 (ns sahai.cli
   "Operational entry point for the fleet placement layer."
-  (:require [clojure.pprint :as pp]
+  (:require [kotoba.lang.fmt :as fmt]
             [sahai.core :as fleet]
             [sahai.exec :as exec]
             [sahai.fence :as fence]
@@ -40,7 +40,7 @@
                                    (:kototama.fleet/lease-id lease) run)
         cp (fleet/checkpoint (:registry step2) {:demo true})
         restored (fleet/restore cp)]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :lease-id (:kototama.fleet/lease-id lease)
       :step1-ok (:ok? step1)
@@ -59,7 +59,7 @@
              :max-ticks 2
              :budget {:fuel 5000000 :ticks 5}
              :use-aiueos? use-aiueos?)]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :lease-id (:lease-id out)
       :stopped (:stopped out)
@@ -78,7 +78,7 @@
              :store (store/disk-store (root))
              :max-ticks 2
              :budget {:fuel 5000000 :ticks 5})]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :lease-id (:lease-id out)
       :stopped (:stopped out)
@@ -90,17 +90,17 @@
 
 (defn cmd-fleet-list []
   (let [keys (store/list-checkpoint-keys (store/disk-store (root)))]
-    (pp/pprint {:ok? true :root (root) :keys keys :count (count keys)})
+    (fmt/pprint {:ok? true :root (root) :keys keys :count (count keys)})
     {:ok? true}))
 
 (defn cmd-fleet-status []
-  (pp/pprint (assoc (store/summarize-store (store/disk-store (root)))
+  (fmt/pprint (assoc (store/summarize-store (store/disk-store (root)))
                     :ok? true))
   {:ok? true})
 
 (defn cmd-fleet-audit []
   (let [entries (store/list-audit-entries (store/disk-store (root)))]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :root (root)
       :count (count entries)
@@ -122,7 +122,7 @@
              :store (store/disk-store (root))
              :wasm wasm-path
              :max-ticks 2)]
-    (pp/pprint
+    (fmt/pprint
      {:ok? (boolean (:ok? out))
       :checkpoint-key (:checkpoint-key out)
       :active-before (:active-before out)
@@ -142,7 +142,7 @@
              :wasm wasm-path
              :max-keys 10
              :max-ticks 1)]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :keys (:keys out)
       :ok-count (:ok-count out)
@@ -153,7 +153,7 @@
 
 (defn cmd-fleet-gate []
   (let [out (exec/run-r3-gate! :wasm (fact-wasm))]
-    (pp/pprint
+    (fmt/pprint
      (select-keys out [:ok? :status :pass-count :fail-count :checks
                        :not-claimed :gate :store-root]))
     {:ok? (boolean (:ok? out))}))
@@ -169,7 +169,7 @@
              :max-passes max-passes
              :max-ticks max-ticks
              :max-keys 10)]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :stopped (:stopped out)
       :pass-count (:pass-count out)
@@ -196,7 +196,7 @@
                node-b)
         merged (fence/merge-registries (:registry claim-a)
                                        (:registry steal))]
-    (pp/pprint
+    (fmt/pprint
      {:ok? true
       :claim-a (:reason claim-a)
       :refuse-b (:ok? refuse)
