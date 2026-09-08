@@ -12,7 +12,7 @@
    names remain migration aliases. No AWS SDK."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.walk :as walk]
             [json.core :as json]
             [kotoba.security.effect :as effect]
