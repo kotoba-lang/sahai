@@ -6,7 +6,7 @@
    when a store is provided."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [kototama.aiueos-adapter :as aiueos]
             [kototama.contract :as contract]
             [kototama.tamaki-contract :as tamaki-contract]

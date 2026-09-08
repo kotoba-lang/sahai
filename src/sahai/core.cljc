@@ -12,7 +12,7 @@
    Execution still calls into kototama.tender on the JVM host; this ns only
    owns the *scheduling and recovery contract*. Not Raft consensus — see
    docs/maturity.md R3."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 ;; ── time helpers (injectable clock for tests) ───────────────────────────────
 
