@@ -35,16 +35,16 @@ effects, grants, and limits required to resume; it never stores the source
 actor spec, objectives, prompts, credentials, or tokens.
 
 ```bash
-clojure -M:cli tamaki-run capability-envelope.edn guest.wasm
+kbb -M:cli tamaki-run capability-envelope.edn guest.wasm
 ```
 
 The envelope digest is an audit identifier, not a signature. Signed Murakumo
 placement epochs remain a separate authority check.
 
 ```bash
-clojure -M:test
-clojure -M:cli fleet-demo
-clojure -M:cli fleet-gate
+kbb -M:test
+kbb -M:cli fleet-demo
+kbb -M:cli fleet-gate
 bash deploy/staging-smoke.sh
 ```
 

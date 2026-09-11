@@ -14,7 +14,7 @@ echo "== packaging =="
 bash deploy/validate-packaging.sh
 
 echo "== fleet-gate =="
-clojure -M:cli fleet-gate
+kbb -M:cli fleet-gate
 
 echo "== daemon wrapper (1 pass) =="
 chmod +x deploy/bin/fleet-daemon
@@ -26,8 +26,8 @@ deploy/bin/fleet-daemon \
   --max-ticks 1
 
 echo "== fleet-status =="
-clojure -M:cli fleet-status
-clojure -M:cli fleet-audit | head -40
+kbb -M:cli fleet-status
+kbb -M:cli fleet-audit | head -40
 
 echo "== staging-smoke passed =="
 echo "R3 stable criterion (ops): this script is the non-root staging substitute."
