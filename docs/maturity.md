@@ -19,8 +19,8 @@ checkpoints created before ADR-2607266000 moved T6 ownership out of kototama.
 ## Gates
 
 ```bash
-clojure -M:test
-clojure -M:cli fleet-gate
+kbb -M:test
+kbb -M:cli fleet-gate
 bash deploy/validate-packaging.sh
 bash deploy/staging-smoke.sh
 ```

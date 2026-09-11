@@ -334,7 +334,7 @@
    :stable-means "ops-ready local/shared-store fleet — NOT global consensus"
    :api ['sahai.core 'sahai.store 'sahai.exec
          'sahai.fence]
-   :gate "clojure -M:cli fleet-gate"
+   :gate "kbb -M:cli fleet-gate"
    :staging "bash deploy/staging-smoke.sh"
    :notes ["Pure cljc core + JVM store/exec edges"
            "1 tick = 1 bounded guest run; no internal infinite loops"

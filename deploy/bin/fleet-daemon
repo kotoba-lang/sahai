@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin wrapper around `clojure -M:cli fleet-daemon` for systemd/cron.
+# Thin wrapper around `kbb -M:cli fleet-daemon` for systemd/cron.
 set -euo pipefail
 
 WASM=""
@@ -39,7 +39,7 @@ cd "$HOME_DIR"
 
 mkdir -p "$ROOT"
 
-exec clojure -M:cli fleet-daemon "$WASM" \
+exec kbb -M:cli fleet-daemon "$WASM" \
   --interval-ms "$INTERVAL_MS" \
   --max-passes "$MAX_PASSES" \
   --max-ticks "$MAX_TICKS"

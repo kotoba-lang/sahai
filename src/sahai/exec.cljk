@@ -830,5 +830,5 @@
        :store-root dir
        :not-claimed ["Raft/Paxos multi-node consensus"
                     "full aiueos fleet broker (all actor:host kinds as first-class policy)"]
-       :gate "clojure -M:cli fleet-gate"
+       :gate "kbb -M:cli fleet-gate"
        :staging "bash deploy/staging-smoke.sh"})))
