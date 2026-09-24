@@ -10,23 +10,21 @@
    B2 uses native Backblaze JSON API when B2_KEY_ID + B2_APP_KEY + B2_BUCKET
    are set (or FLEET_B2_* overrides). The pre-split KOTOTAMA_FLEET_B2_*
    names remain migration aliases. No AWS SDK."
-  (:require [kotoba.lang.edn :as edn]
-            [clojure.java.io :as io]
+  (:require [kotoba.http.form-urlencoded :as form-urlencoded] [kotoba.bytes :as kbytes] [kotoba.lang.edn :as edn]
+            [kotoba.io :as io]
             [kotoba.lang.text :as str]
-            [clojure.walk :as walk]
+            [kotoba.lang.coll :as walk]
             [json.core :as json]
             [kotoba.security.effect :as effect]
             [sahai.core :as fleet])
-  (:import (java.net URI URLEncoder)
+  (:import (java.net URI)
            (java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers
                           HttpResponse$BodyHandlers)
-           (java.nio.charset StandardCharsets)
-           (java.util Base64)
            (java.time Duration)))
 
 (defn- ensure-parent! [f]
-  (when-let [p (.getParentFile (io/file f))]
-    (.mkdirs p)))
+  (when-let [p (io/parent-file (io/file f))]
+    (io/mkdirs p)))
 
 (defn memory-store
   "In-process atom store (tests)."
@@ -49,17 +47,17 @@
   ([] (disk-store "tmp/fleet"))
   ([root-dir]
    (let [root (io/file root-dir)]
-     (.mkdirs root)
+     (io/mkdirs root)
      {:kind :disk
-      :root (.getPath root)
+      :root (io/path root)
       :save! (fn [k data]
                (let [f (io/file root (str (safe-key k) ".edn"))]
                  (ensure-parent! f)
                  (spit f (pr-str data))
-                 (.getPath f)))
+                 (io/path f)))
       :load! (fn [k]
                (let [f (io/file root (str (safe-key k) ".edn"))]
-                 (when (.exists f)
+                 (when (io/exists? f)
                    (edn/read-string (slurp f)))))})))
 
 (defn append-tick-audit!
@@ -111,9 +109,8 @@
 
 (defn- basic-auth [id key]
   (str "Basic "
-       (.encodeToString
-        (Base64/getEncoder)
-        (.getBytes (str id ":" key) StandardCharsets/UTF_8))))
+       (kbytes/base64-encode
+        (kbytes/utf8-bytes (str id ":" key)))))
 
 (def ^:private b2-authorize-endpoint
   "Authorization endpoint for b2_authorize_account. Defaults to the fixed
@@ -201,12 +198,12 @@
 
 (defn- b2-upload!
   [upload file-name ^String content]
-  (let [bs (.getBytes content StandardCharsets/UTF_8)
+  (let [bs (kbytes/utf8-bytes content)
         sha (sha1-hex bs)
         req (-> (HttpRequest/newBuilder (URI/create (:upload-url upload)))
                 (.header "Authorization" (:auth-token upload))
                 (.header "X-Bz-File-Name"
-                         (-> (URLEncoder/encode file-name "UTF-8")
+                         (-> (form-urlencoded/form-encode file-name)
                              (str/replace "+" "%20")))
                 (.header "Content-Type" "application/edn")
                 (.header "X-Bz-Content-Sha1" sha)
@@ -330,11 +327,11 @@
   (case (:kind store)
     :disk
     (let [root (io/file (:root store))]
-      (if-not (.isDirectory root)
+      (if-not (io/directory? root)
         []
-        (->> (.listFiles root)
-             (filter #(.isFile %))
-             (map #(.getName %))
+        (->> (io/list-files root)
+             (filter #(io/file? %))
+             (map #(io/file-name %))
              (filter #(str/ends-with? % ".edn"))
              (map #(subs % 0 (- (count %) 4)))
              sort
