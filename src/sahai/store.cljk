@@ -10,7 +10,7 @@
    B2 uses native Backblaze JSON API when B2_KEY_ID + B2_APP_KEY + B2_BUCKET
    are set (or FLEET_B2_* overrides). The pre-split KOTOTAMA_FLEET_B2_*
    names remain migration aliases. No AWS SDK."
-  (:require [clojure.edn :as edn]
+  (:require [kotoba.lang.edn :as edn]
             [clojure.java.io :as io]
             [kotoba.lang.text :as str]
             [clojure.walk :as walk]
