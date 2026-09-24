@@ -31,7 +31,7 @@
    override any ambient B2_* env, so the suite is hermetic everywhere.
 
    No live-network integration test: B2 contract is pinned by this fake."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [clojure.walk :as walk]
             [json.core :as json]
             [sahai.store :as store])

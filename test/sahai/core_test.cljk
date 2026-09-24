@@ -1,5 +1,5 @@
 (ns sahai.core-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [sahai.core :as fleet]))
 
 (deftest lease-lifecycle
