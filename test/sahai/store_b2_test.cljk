@@ -31,13 +31,12 @@
    override any ambient B2_* env, so the suite is hermetic everywhere.
 
    No live-network integration test: B2 contract is pinned by this fake."
-  (:require [kotoba.test :refer [deftest is testing]]
-            [clojure.walk :as walk]
+  (:require [kotoba.http.form-urlencoded :as form-urlencoded] [kotoba.bytes :as kbytes] [kotoba.test :refer [deftest is testing]]
+            [kotoba.lang.coll :as walk]
             [json.core :as json]
             [sahai.store :as store])
   (:import (com.sun.net.httpserver HttpServer HttpHandler)
-           (java.net InetSocketAddress URLDecoder)
-           (java.util Base64)))
+           (java.net InetSocketAddress)))
 
 ;; ── fake B2 constants (the credentials the fake accepts) ────────────────────
 
@@ -61,7 +60,7 @@
   (deref (deref endpoint-var)))
 
 (defn- b64 ^String [^String s]
-  (.encodeToString (Base64/getEncoder) (.getBytes s "UTF-8")))
+  (kbytes/base64-encode (kbytes/utf8-bytes s)))
 
 (defn- expected-basic-auth ^String []
   (str "Basic " (b64 (str fake-key-id ":" fake-app-key))))
@@ -83,7 +82,7 @@
   (filterv #(= op (:op %)) (events)))
 
 (defn- utf8-bytes ^bytes [^String s]
-  (.getBytes s "UTF-8"))
+  (kbytes/utf8-bytes s))
 
 (defn- sha1-hex [^bytes bs]
   (let [d (.digest (java.security.MessageDigest/getInstance "SHA-1") bs)]
@@ -108,7 +107,7 @@
           headers (.getRequestHeaders exchange)
           header (fn [k] (.getFirst headers k))
           body-bytes (.readAllBytes (.getRequestBody exchange))
-          body-str (String. body-bytes "UTF-8")
+          body-str (kbytes/utf8-string body-bytes)
           fail (:fail @state)
           event (fn [m] (swap! state update :events conj m))
           respond (fn [status body] (respond! exchange status body))]
@@ -169,7 +168,7 @@
         ;; ── b2_upload_file: upload token + SHA-1 enforced against the body ──
         (and (= "/upload/u1" path) (= "POST" method))
         (let [file-name (some-> (header "X-Bz-File-Name")
-                                (URLDecoder/decode "UTF-8"))
+                                (form-urlencoded/form-decode))
               sha (header "X-Bz-Content-Sha1")]
           (event {:op :upload :authorization (header "Authorization")
                   :file-name file-name :sha1 sha

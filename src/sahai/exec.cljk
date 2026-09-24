@@ -4,7 +4,7 @@
    execute-fn builds a tick executor that loads wasm bytes and runs under
    the lease's grants + fuel limit. Checkpoints after each successful step
    when a store is provided."
-  (:require [clojure.java.io :as io]
+  (:require [kotoba.bytes :as kbytes] [clojure.java.io :as io]
             [clojure.edn :as edn]
             [kotoba.lang.text :as str]
             [kototama.aiueos-adapter :as aiueos]
@@ -40,7 +40,7 @@
   "Stable SHA-256 identity for an admitted envelope. This is an audit
    identifier, not a signature or a secret."
   [envelope]
-  (let [payload (.getBytes (pr-str (canonical-value envelope)) "UTF-8")
+  (let [payload (kbytes/utf8-bytes (pr-str (canonical-value envelope)))
         digest (.digest (java.security.MessageDigest/getInstance "SHA-256") payload)]
     (format "%064x" (java.math.BigInteger. 1 digest))))
 
