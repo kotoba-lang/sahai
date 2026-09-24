@@ -1,5 +1,5 @@
 (ns sahai.fence-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [sahai.core :as fleet]
             [sahai.fence :as fence]))
 
