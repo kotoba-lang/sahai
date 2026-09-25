@@ -31,7 +31,7 @@
    override any ambient B2_* env, so the suite is hermetic everywhere.
 
    No live-network integration test: B2 contract is pinned by this fake."
-  (:require [kotoba.http.form-urlencoded :as form-urlencoded] [kotoba.bytes :as kbytes] [kotoba.test :refer [deftest is testing]]
+  (:require [kotoba.lang.error :as kerror] [kotoba.http.form-urlencoded :as form-urlencoded] [kotoba.bytes :as kbytes] [kotoba.test :refer [deftest is testing]]
             [kotoba.lang.coll :as walk]
             [json.core :as json]
             [sahai.store :as store])
@@ -309,7 +309,7 @@
 
 (deftest b2-bucket-id-throws-for-unknown-bucket
   (with-fake-b2
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"B2 bucket not found"
+    (is (thrown-with-msg? kerror/ExceptionInfo #"B2 bucket not found"
                           (#'store/b2-bucket-id! (b2-auth) "no-such-bucket")))))
 
 (deftest b2-get-upload-url-parses-keywordized-map
@@ -394,7 +394,7 @@
       (try
         ((:save! b2) "k" {:x 1})
         (is false "expected b2_authorize_account failure")
-        (catch clojure.lang.ExceptionInfo e
+        (catch kerror/ExceptionInfo e
           (is (re-find #"b2_authorize_account failed" (.getMessage e)))
           (is (= 401 (:status (ex-data e)))))))))
 
@@ -404,7 +404,7 @@
       (try
         ((:save! b2) "k" {:x 1})
         (is false "expected b2_get_upload_url failure")
-        (catch clojure.lang.ExceptionInfo e
+        (catch kerror/ExceptionInfo e
           (is (re-find #"b2_get_upload_url failed" (.getMessage e)))
           (is (= 503 (:status (ex-data e)))))))))
 
@@ -414,14 +414,14 @@
       (try
         ((:save! b2) "k" {:x 1})
         (is false "expected b2 upload failure")
-        (catch clojure.lang.ExceptionInfo e
+        (catch kerror/ExceptionInfo e
           (is (re-find #"b2 upload failed" (.getMessage e)))
           (is (= 500 (:status (ex-data e)))))))))
 
 (deftest b2-missing-bucket-throws-before-any-upload
   (with-fake-b2-failing {:list-empty? true}
     (let [b2 (store/b2-store (b2-creds))]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"B2 bucket not found"
+      (is (thrown-with-msg? kerror/ExceptionInfo #"B2 bucket not found"
                             ((:save! b2) "k" {:x 1})))
       (is (empty? (events-of :upload))
           "no upload attempted when bucket resolution fails"))))

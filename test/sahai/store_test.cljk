@@ -1,5 +1,5 @@
 (ns sahai.store-test
-  (:require [clojure.java.io :as io]
+  (:require [kotoba.lang.error :as kerror] [clojure.java.io :as io]
             [kotoba.process :as shell]
             [kotoba.lang.text :as str]
             [kotoba.test :refer [deftest is testing]]
@@ -216,7 +216,7 @@
     (is (not (str/includes? (pr-str ((:dump s))) "tamaki.capability/imports"))
         "checkpoint stores the sealed boundary, not the source envelope")
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
+         kerror/ExceptionInfo
          #"capability grants are sealed"
          (exec/resume-lease! reg (:lease-id out)
                              {:wasm "not-loaded.wasm"
@@ -230,7 +230,7 @@
         invalid (assoc host-free-tamaki-envelope
                        :tamaki.capability/substrate :shell)]
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
+         kerror/ExceptionInfo
          #"rejected Tamaki capability envelope"
          (exec/bootstrap-tamaki-run!
           invalid "not-loaded.wasm"
