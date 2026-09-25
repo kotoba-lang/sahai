@@ -4,7 +4,7 @@
    execute-fn builds a tick executor that loads wasm bytes and runs under
    the lease's grants + fuel limit. Checkpoints after each successful step
    when a store is provided."
-  (:require [kotoba.bytes :as kbytes] [clojure.java.io :as io]
+  (:require [kotoba.bytes :as kbytes] [kotoba.io :as io]
             [clojure.edn :as edn]
             [kotoba.lang.text :as str]
             [kototama.aiueos-adapter :as aiueos]
@@ -60,7 +60,7 @@
     (bytes? path-or-bytes) path-or-bytes
     (string? path-or-bytes)
     (let [f (io/file path-or-bytes)]
-      (if (.exists f)
+      (if (io/exists? f)
         (with-open [in (io/input-stream f)]
           (.readAllBytes in))
         (with-open [in (io/input-stream (io/resource path-or-bytes))]
@@ -644,7 +644,7 @@
   (let [candidates ["deploy/systemd/fleet-daemon.service"
                     "deploy/systemd/fleet-daemon.timer"
                     "deploy/bin/fleet-daemon"]]
-    (every? #(.exists (io/file %)) candidates)))
+    (every? #(io/exists? (io/file %)) candidates)))
 
 (defn run-r3-gate!
   "Programmatic R3 acceptance harness (single process).
@@ -794,8 +794,8 @@
              :b-lease (:lease-id b)
              :error (or (:error a) (:error b))})
       (when-let [root (io/file mt-dir)]
-        (doseq [f (reverse (file-seq root))]
-          (.delete f))))
+        (doseq [f (reverse (io/file-seq root))]
+          (io/delete f))))
     ;; 11 optional aiueos path still runs host-free guests (empty grants)
     (let [ai-dir (str dir "-aiueos")
           ai (try
@@ -816,8 +816,8 @@
              :result (get-in ai [:last :result :result])
              :error (:error ai)})
       (when-let [root (io/file ai-dir)]
-        (doseq [f (reverse (file-seq root))]
-          (.delete f))))
+        (doseq [f (reverse (io/file-seq root))]
+          (io/delete f))))
     (let [cs @checks
           ok? (every? :ok? cs)]
       {:ok? ok?
