@@ -27,13 +27,17 @@ jobs:
       # loader that every JVM entry point (-M:cli, -M:test) bootstraps with
       # `-i`. A vendored copy is a fork the moment someone edits it: pin it to
       # the upstream sha named in deps.edn and fail on any drift.
-      - name: "Guard: vendored cljk loader matches upstream pin"
+      - name: "Guard: vendored cljk loader and linter match upstream pins"
         run: |
           set -euo pipefail
           sha=0236cc7c9715e61869736191a10068e976a0c370
           grep -q "kotoba-lang/kotoba-lang@$sha" deps.edn
           curl -fsSL "https://raw.githubusercontent.com/kotoba-lang/kotoba-lang/$sha/src/kotoba/lang/cljk_loader.cljk" -o /tmp/cljk_loader.cljk
           cmp /tmp/cljk_loader.cljk jvm/cljk_loader.cljk
+          lint_sha=c4c0736423a5d1134326879ce38c215ad0408adf
+          grep -q "kotoba-lang/kotoba-lang@$lint_sha" deps.edn
+          curl -fsSL "https://raw.githubusercontent.com/kotoba-lang/kotoba-lang/$lint_sha/src/kotoba/lang/cljk_lint.cljk" -o /tmp/cljk_lint.cljk
+          cmp /tmp/cljk_lint.cljk jvm/cljk_lint.cljk
       # Before the loader, `clojure -M:test` loaded no .cljk namespace and
       # reported "Ran 0 tests" as success. Refuse a vacuous green.
       - name: Tests (JVM, .cljk via loader)
@@ -44,6 +48,25 @@ jobs:
             echo "::error::clojure -M:test ran 0 tests (.cljk namespaces not loaded)"
             exit 1
           fi
+      # Lint once the files are known to be read. Before kotoba.lang.cljk-lint,
+      # clj-kondo's directory walk skipped every .cljk and `clojure -M:lint`
+      # reported "errors: 0" on 0 files. The guard plants a canary with an
+      # unresolved symbol under src/ and under test/ and requires lint to fail
+      # on each; a lint that does not read .cljk there cannot pass this step.
+      - name: "Guard: lint reads src/ and test/ .cljk (canary must fail)"
+        run: |
+          set -euo pipefail
+          for root in src test; do
+            canary="$root/sahai/zz_lint_canary.cljk"
+            printf '(ns sahai.zz-lint-canary)\n(defn f [] (lint-canary-unresolved-symbol))\n' > "$canary"
+            if clojure -M:lint > /tmp/canary.log 2>&1; then
+              cat /tmp/canary.log
+              echo "::error::clojure -M:lint passed with an unresolved symbol in $canary: it is not reading $root/**/*.cljk"
+              exit 1
+            fi
+            grep -q "zz_lint_canary.cljk.*Unresolved symbol: lint-canary-unresolved-symbol" /tmp/canary.log
+            rm "$canary"
+          done
       - run: clojure -M:lint
       - run: clojure -M:cli fleet-gate
       - run: bash deploy/validate-packaging.sh

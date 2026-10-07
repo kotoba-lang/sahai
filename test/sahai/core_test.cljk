@@ -1,5 +1,5 @@
 (ns sahai.core-test
-  (:require [kotoba.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is]]
             [sahai.core :as fleet]))
 
 (deftest lease-lifecycle
