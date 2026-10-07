@@ -35,18 +35,24 @@ effects, grants, and limits required to resume; it never stores the source
 actor spec, objectives, prompts, credentials, or tokens.
 
 ```bash
-kbb -M:cli tamaki-run capability-envelope.edn guest.wasm
+clojure -M:cli tamaki-run capability-envelope.edn guest.wasm
 ```
 
 The envelope digest is an audit identifier, not a signature. Signed Murakumo
 placement epochs remain a separate authority check.
 
 ```bash
-kbb -M:test
-kbb -M:cli fleet-demo
-kbb -M:cli fleet-gate
+clojure -M:test
+clojure -M:cli fleet-demo
+clojure -M:cli fleet-gate
 bash deploy/staging-smoke.sh
 ```
+
+These run on the JVM, not on kbb: the kototama tender executes guests on
+Chicory and the store/exec edges use `java.io`/`java.nio`, which the kbb engine
+(SCI on Node) cannot host. The `:cli` and `:test` aliases bootstrap
+`jvm/cljk_loader.cljk` (a pinned copy of kotoba-lang/kotoba-lang's JVM `.cljk`
+compatibility loader) so the Clojure CLI can load the `.cljk` sources.
 
 See [docs/maturity.md](docs/maturity.md) for the exact R3 claim and operational
 runbook.

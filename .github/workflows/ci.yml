@@ -7,6 +7,9 @@ on:
 
 jobs:
   test:
+    # main's branch protection requires a check named "CI"; without this the
+    # check run is called "test" and the required context never reports.
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +23,28 @@ jobs:
       - uses: bytecodealliance/actions/wasm-tools/setup@7ee36389ead2e51422087f820a7e17e39811b05f
         with:
           version: "1.243.0"
-      - run: clojure -M:test
+      # jvm/cljk_loader.cljk is a vendored copy of the kotoba-lang JVM .cljk
+      # loader that every JVM entry point (-M:cli, -M:test) bootstraps with
+      # `-i`. A vendored copy is a fork the moment someone edits it: pin it to
+      # the upstream sha named in deps.edn and fail on any drift.
+      - name: "Guard: vendored cljk loader matches upstream pin"
+        run: |
+          set -euo pipefail
+          sha=0236cc7c9715e61869736191a10068e976a0c370
+          grep -q "kotoba-lang/kotoba-lang@$sha" deps.edn
+          curl -fsSL "https://raw.githubusercontent.com/kotoba-lang/kotoba-lang/$sha/src/kotoba/lang/cljk_loader.cljk" -o /tmp/cljk_loader.cljk
+          cmp /tmp/cljk_loader.cljk jvm/cljk_loader.cljk
+      # Before the loader, `clojure -M:test` loaded no .cljk namespace and
+      # reported "Ran 0 tests" as success. Refuse a vacuous green.
+      - name: Tests (JVM, .cljk via loader)
+        run: |
+          set -euo pipefail
+          clojure -M:test 2>&1 | tee /tmp/test.log
+          if grep -q '^Ran 0 tests' /tmp/test.log; then
+            echo "::error::clojure -M:test ran 0 tests (.cljk namespaces not loaded)"
+            exit 1
+          fi
       - run: clojure -M:lint
       - run: clojure -M:cli fleet-gate
       - run: bash deploy/validate-packaging.sh
       - run: bash deploy/staging-smoke.sh
-
