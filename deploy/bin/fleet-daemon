@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Thin wrapper around `kbb -M:cli fleet-daemon` for systemd/cron.
+# Thin wrapper around `clojure -M:cli fleet-daemon` for systemd/cron.
+# JVM on purpose: the kototama tender runs guests on Chicory, which the kbb
+# engine cannot host; the :cli alias loads .cljk via jvm/cljk_loader.cljk.
 set -euo pipefail
 
 WASM=""
@@ -39,7 +41,7 @@ cd "$HOME_DIR"
 
 mkdir -p "$ROOT"
 
-exec kbb -M:cli fleet-daemon "$WASM" \
+exec clojure -M:cli fleet-daemon "$WASM" \
   --interval-ms "$INTERVAL_MS" \
   --max-passes "$MAX_PASSES" \
   --max-ticks "$MAX_TICKS"

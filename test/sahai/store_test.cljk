@@ -216,7 +216,7 @@
     (is (not (str/includes? (pr-str ((:dump s))) "tamaki.capability/imports"))
         "checkpoint stores the sealed boundary, not the source envelope")
     (is (thrown-with-msg?
-         kerror/ExceptionInfo
+         #?(:clj clojure.lang.ExceptionInfo :default kerror/ExceptionInfo)
          #"capability grants are sealed"
          (exec/resume-lease! reg (:lease-id out)
                              {:wasm "not-loaded.wasm"
@@ -230,7 +230,7 @@
         invalid (assoc host-free-tamaki-envelope
                        :tamaki.capability/substrate :shell)]
     (is (thrown-with-msg?
-         kerror/ExceptionInfo
+         #?(:clj clojure.lang.ExceptionInfo :default kerror/ExceptionInfo)
          #"rejected Tamaki capability envelope"
          (exec/bootstrap-tamaki-run!
           invalid "not-loaded.wasm"
