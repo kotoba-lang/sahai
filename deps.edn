@@ -47,13 +47,25 @@
         io.github.kotoba-lang/kototama
         {:git/url "https://github.com/kotoba-lang/kototama.git"
          :git/sha "74146a896dfae72b8eb407acf6f5717e0d2fd2e1"}}
+ ;; JVM host. sahai's execution edge is JVM-only: kototama.tender runs guests
+ ;; on Chicory and sahai.store/exec use java.io/java.nio directly, so the kbb
+ ;; engine (SCI on Node) cannot host `-M:cli` or `-M:test` -- measured
+ ;; 2026-10-07: "Unable to resolve classname: java.io.RandomAccessFile"
+ ;; (kototama.linear-journal) and "...com.sun.net.httpserver.HttpServer".
+ ;; Stock clojure.lang.RT/load does not probe `.cljk` (adr-2609111500 rename),
+ ;; so every JVM entry point bootstraps jvm/cljk_loader.cljk with `-i` first.
+ ;; That file is a byte-for-byte copy of kotoba-lang/kotoba-lang
+ ;; src/kotoba/lang/cljk_loader.cljk at the sha below; CI fails on drift.
+ ;;   upstream: kotoba-lang/kotoba-lang@0236cc7c9715e61869736191a10068e976a0c370
+ ;; Without it `clojure -M:test` "passes" with 0 tests and `-M:cli` cannot
+ ;; find sahai.cli at all.
  :aliases
- {:cli {:main-opts ["-m" "sahai.cli"]}
+ {:cli {:main-opts ["-i" "jvm/cljk_loader.cljk" "-m" "sahai.cli"]}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
                       {:git/url "https://github.com/cognitect-labs/test-runner.git"
                        :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}
-         :main-opts ["-m" "cognitect.test-runner"]}
+         :main-opts ["-i" "jvm/cljk_loader.cljk" "-m" "cognitect.test-runner"]}
   :lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
          :main-opts ["-m" "clj-kondo.main" "--lint" "src" "test"
                      "--fail-level" "error"]}}}
