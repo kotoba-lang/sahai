@@ -7,6 +7,9 @@ on:
 
 jobs:
   test:
+    # main's branch protection requires a check named "CI"; without this the
+    # check run is called "test" and the required context never reports.
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
