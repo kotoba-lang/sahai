@@ -81,8 +81,7 @@
      :fuel override fuel (default from tick :fuel-limit)"
   [{:keys [wasm grants caps-extra fuel store llm-client deadline-ms run-permits
            profile signer-registry signed-manifest manifest-now-ms
-           verify-manifest-fn]
-    :as opts}]
+           verify-manifest-fn]}]
   (let [wasm-bytes (load-wasm wasm)]
     (fn [tick]
       (let [g (or grants (:kototama.fleet/grants tick) [])
@@ -469,8 +468,7 @@
    Returns {:registry :resumes :active-before :skipped-count}."
   [checkpoint-key & {:keys [store wasm max-ticks lease-id grants caps-extra
                             node-id fence? skip-if-held?]
-                     :or {max-ticks 5 fence? true skip-if-held? true}
-                     :as opts}]
+                     :or {max-ticks 5 fence? true skip-if-held? true}}]
   (let [store (or store (store/default-store))
         node (str (or node-id (fence/node-id)))
         ;; Merge this checkpoint with other keys on the store for multi-node view
@@ -590,8 +588,7 @@
      :pass-fn  override recovery-pass! for tests
 
    Returns {:passes [pass…] :stopped :max-passes|:stop?|:error :ok-count :fail-count}."
-  [& {:keys [store wasm interval-ms max-passes max-keys max-ticks
-             stop? continue-on-error? sleep-fn pass-fn]
+  [& {:keys [store wasm sleep-fn pass-fn]
       :as opts}]
   (let [cfg (daemon-config opts)
         sleep! (or sleep-fn (fn [ms]
@@ -778,9 +775,6 @@
                :node-id "gate-mt-node"
                :fence? true)
               (catch Exception e {:error (.getMessage e)}))
-          reg (try
-                (store/load-checkpoint! (:checkpoint-key a) mt)
-                (catch Exception _ nil))
           tenants-ok?
           (and (= 120 (get-in a [:last :result :result]))
                (= 120 (get-in b [:last :result :result]))

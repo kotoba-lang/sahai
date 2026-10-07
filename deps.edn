@@ -66,6 +66,15 @@
                       {:git/url "https://github.com/cognitect-labs/test-runner.git"
                        :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}
          :main-opts ["-i" "jvm/cljk_loader.cljk" "-m" "cognitect.test-runner"]}
+  ;; clj-kondo's directory walk sees only .clj/.cljs/.cljc, so `--lint src
+  ;; test` checked 0 files after the .cljk rename and reported success.
+  ;; kotoba.lang.cljk-lint (jvm/cljk_lint.cljk, a byte-for-byte copy of
+  ;; kotoba-lang/kotoba-lang src/kotoba/lang/cljk_lint.cljk at the sha below,
+  ;; drift-checked in CI) collects src/ and test/ .cljk itself, lints each in
+  ;; the language cljk-origin.edn records, refuses to run on 0 files, and exits
+  ;; 3 on any error. kotoba.test macros: .clj-kondo/config.edn.
+  ;;   upstream: kotoba-lang/kotoba-lang@c4c0736423a5d1134326879ce38c215ad0408adf
   :lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
-         :main-opts ["-m" "clj-kondo.main" "--lint" "src" "test"
-                     "--fail-level" "error"]}}}
+         :main-opts ["-i" "jvm/cljk_loader.cljk"
+                     "-i" "jvm/cljk_lint.cljk"
+                     "-m" "kotoba.lang.cljk-lint"]}}}
