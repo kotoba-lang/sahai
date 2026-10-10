@@ -46,7 +46,7 @@
         ;; this one-way dependency is the boundary that avoids a cycle.
         io.github.kotoba-lang/kototama
         {:git/url "https://github.com/kotoba-lang/kototama.git"
-         :git/sha "74146a896dfae72b8eb407acf6f5717e0d2fd2e1"}}
+         :git/sha "e7ef1f10ef1870181f45a7e0239cfe867c428dda"}}
  ;; JVM host. sahai's execution edge is JVM-only: kototama.tender runs guests
  ;; on Chicory and sahai.store/exec use java.io/java.nio directly, so the kbb
  ;; engine (SCI on Node) cannot host `-M:cli` or `-M:test` -- measured
