@@ -1,0 +1,15 @@
+;; Composition metadata only; existing owner runtime contracts retain authority.
+{:stack.integration/version 1
+ :status :accepted-architecture-direction
+ :owner "kotoba-lang/sahai"
+ :role "Reusable placement and fencing"
+ :composition-authority "https://github.com/kotoba-lang/kotoba-lang/blob/main/lang/stack-architecture.edn"
+ :architecture-direction "https://github.com/kotoba-lang/kotoba-lang/blob/main/lang/stack-architecture-target-neutral.edn"
+ :refactor-procedure "https://github.com/kotoba-lang/kotoba-lang/blob/main/docs/stack-refactor-procedure.md"
+ :intended-entrypoint-dependencies ["neutral workload, lease and execution contracts" "runtime tender interface"]
+ :observed-base "31da0d776f7bf7a638248a41f4a5c2563a09c809"
+ :observed-selected-direct ["kototama"]
+ :aliases-recorded-separately true
+ :runtime-migration-performed false
+ :runtime-schema-changed false
+ :qualification-claim :none}
