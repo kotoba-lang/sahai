@@ -56,3 +56,14 @@ compatibility loader) so the Clojure CLI can load the `.cljk` sources.
 
 See [docs/maturity.md](docs/maturity.md) for the exact R3 claim and operational
 runbook.
+
+## Target-neutral and distributed stack architecture
+
+Selects where and when bounded work is attempted and fences stale execution. Does not define language meaning, mint grants or establish consensus finality. Murakumo retains its inference-fleet control plane. An epoch/fence is not a quorum certificate. Persisted wire keys and lease formats remain compatible until explicit versioned migration.
+
+See the [owner integration guide and dependency direction](docs/stack-architecture.md),
+[composition metadata](spec/stack-integration.edn), and
+[whole-stack refactor procedure](https://github.com/kotoba-lang/kotoba-lang/blob/main/docs/stack-refactor-procedure.md).
+The direction is adopted; runtime contract migration and qualification remain
+explicit, separately verified work. Tier labels are responsibility axes, not
+a single dependency ranking.
