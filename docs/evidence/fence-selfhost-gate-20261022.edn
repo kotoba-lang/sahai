@@ -1,0 +1,24 @@
+;; sahai.fence (Kotoba) selfhost gate receipt (JUN-307; root ADR-2610222120).
+;; The README "Fencing in Kotoba" commands, run 2026-10-22 on this Mac's podman
+;; machine (applehv, arm64 Linux guest). No Node.js, nbb, JVM or babashka in the
+;; build or the run; the container image supplies only `sh`.
+{:schema "sahai.selfhost-gate.v1"
+ :date "2026-10-22"
+ :compiler {:repo "kotoba-lang/amu"
+            :commit "f5b11a08"
+            :path "seed/bootstrap/aarch64-linux-static-root.elf"
+            :sha256 "8256bfd8462c2014bf1864f154e88aa7cbb16eda7754aaabf8bf2303dcfc8dc7"}
+ :source {:path "kotoba/sahai/fence.kotoba"
+          :sha256 "63a833e81d927e07cd59c62caea50214c9e87358dd8e1c51d84c130ea9ea95f8"}
+ :driver {:sha256 "1fb5d2bbb6dba6b51b3a9ae5f3a11cb49b18ffb65ac1b16444d0c1963d5d54f8"
+          :main "1 + 2 + 4 + 8 over the four test-*"}
+ :host {:runtime "podman --platform linux/arm64 --network none"
+        :image "docker.io/library/python:3.12-alpine"
+        :image-digest "sha256:57f679a3910bed1eb16ad722b904a118bca8586ec8ad39d98dd13350e7062cb2"}
+ :compile {:report "{:ok true, :target :aarch64-linux, :format :static, :code-bytes 104627, :bytes 111104}"
+           :image-sha256 "2e5f0f33db56656210bfa569d1dfe3bb84c2fd4d2268f62c34097b88bfea6e6c"}
+ :run {:report "{:status :ok :result 15 ...}" :result 15 :expected 15}
+ :negative-control {:mutation "test-claim expects an equal epoch to displace a live holder (fence/higher-epoch)"
+                    :image-sha256 "275a1dadd81e31c33f13dac3188f9e142e57b28a8d151913145eda7b9c0dd414"
+                    :result 11 :expected 11}
+ :not-run ["the JVM clojure test suite locally (it runs as the repository's required CI check)"]}

@@ -20,6 +20,45 @@ checkpoints written before the split remain readable. Code ownership moved to:
 - `sahai.exec` — placement-to-tender bridge and R3 acceptance gate
 - `sahai.cli` — the ten fleet operational commands formerly in `kototama.cli`
 
+## Fencing in Kotoba
+
+`kotoba/sahai/fence.kotoba` states the fencing rules of `src/sahai/fence.cljk`
+as pure Kotoba decisions, with the registry and the clock left to the caller
+(com-junkawasaki/root ADR-2610222120: the itonami gateway takes a job's
+exclusivity from a sahai lease, not a host file lock). `beats?` (higher epoch,
+then later issued-at, then greater owner id), `claim-reason`
+(`fence/free`, `fence/renew`, `fence/steal-expired`, `fence/higher-epoch`,
+`fence/held-by-other` — a live holder yields only to a strictly higher epoch
+or to expiry), `claimed-epoch` (holder's on renew, holder + 1 on a bumped
+steal, the request's when free) and `expired?`. Owner ids compare by bytes,
+which is the sign of the `.cljk`'s `compare` for ASCII node ids. Gate (no
+Node.js, nbb, JVM or babashka):
+
+```bash
+AMU=../amu; G=$(mktemp -d)   # G must be under a path podman can mount
+cp "$AMU/seed/bootstrap/aarch64-linux-static-root.elf" "$G/root.elf"
+F=kotoba/sahai/fence.kotoba
+end=$(grep -n 'test-epoch\]))' $F | cut -d: -f1)
+{ echo '(ns sahai-fence-gate (:export [main]))'
+  tail -n +$((end+1)) $F
+  cat <<'EOF'
+(defn main [] :i64
+  (+ (if (test-beats) 1 0) (+ (if (test-expired) 2 0)
+  (+ (if (test-claim) 4 0) (if (test-epoch) 8 0)))))
+EOF
+} > "$G/gate.kotoba"
+podman run --rm --platform linux/arm64 --network none -e KEXE_CAP_RESOURCES_35="$G" \
+  -v "$G:$G" -w "$G" docker.io/library/python:3.12-alpine sh -c \
+  "./root.elf compile $G/gate.kotoba --target aarch64-linux --output $G/gate.elf --format static \
+   && chmod +x gate.elf && KEXE_STRUCTURED_REPORT=1 ./gate.elf"
+#   → {:status :ok :result 15 ...}      (15 = all four test-* true)
+```
+
+Measured 2026-10-22 with the root of amu `f5b11a08` (sha256 `8256bfd8…dc7`):
+`:result 15`; letting an equal epoch displace a live holder gives `11`.
+Receipt: `docs/evidence/fence-selfhost-gate-20261022.edn`. The `.cljk`
+`sahai.fence` is unchanged and does not call this module.
+
 ## Tamaki capability boundary
 
 Tamaki does not hand an actor specification or private issue data to Fleet.
