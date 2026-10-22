@@ -32,26 +32,16 @@ then later issued-at, then greater owner id), `claim-reason`
 or to expiry), `claimed-epoch` (holder's on renew, holder + 1 on a bumped
 steal, the request's when free) and `expired?`. Owner ids compare by bytes,
 which is the sign of the `.cljk`'s `compare` for ASCII node ids. Gate (no
-Node.js, nbb, JVM or babashka):
+Node.js, nbb, JVM or babashka; CI runs the same script on a native arm64
+runner):
 
 ```bash
 AMU=../amu; G=$(mktemp -d)   # G must be under a path podman can mount
 cp "$AMU/seed/bootstrap/aarch64-linux-static-root.elf" "$G/root.elf"
-F=kotoba/sahai/fence.kotoba
-end=$(grep -n 'test-epoch\]))' $F | cut -d: -f1)
-{ echo '(ns sahai-fence-gate (:export [main]))'
-  tail -n +$((end+1)) $F
-  cat <<'EOF'
-(defn main [] :i64
-  (+ (if (test-beats) 1 0) (+ (if (test-expired) 2 0)
-  (+ (if (test-claim) 4 0) (if (test-epoch) 8 0)))))
-EOF
-} > "$G/gate.kotoba"
-podman run --rm --platform linux/arm64 --network none -e KEXE_CAP_RESOURCES_35="$G" \
-  -v "$G:$G" -w "$G" docker.io/library/python:3.12-alpine sh -c \
-  "./root.elf compile $G/gate.kotoba --target aarch64-linux --output $G/gate.elf --format static \
-   && chmod +x gate.elf && KEXE_STRUCTURED_REPORT=1 ./gate.elf"
-#   → {:status :ok :result 15 ...}      (15 = all four test-* true)
+podman run --rm --platform linux/arm64 --network none -v "$PWD:/src:ro" \
+  -v "$G:$G" -w /src docker.io/library/python:3.12-alpine \
+  scripts/selfhost-gate.sh "$G/root.elf" kotoba/sahai/fence.kotoba
+#   → selfhost-gate: ... result=15 expect=15     (15 = all four test-* true)
 ```
 
 Measured 2026-10-22 with the root of amu `f5b11a08` (sha256 `8256bfd8…dc7`):
@@ -91,7 +81,9 @@ These run on the JVM, not on kbb: the kototama tender executes guests on
 Chicory and the store/exec edges use `java.io`/`java.nio`, which the kbb engine
 (SCI on Node) cannot host. The `:cli` and `:test` aliases bootstrap
 `jvm/cljk_loader.cljk` (a pinned copy of kotoba-lang/kotoba-lang's JVM `.cljk`
-compatibility loader) so the Clojure CLI can load the `.cljk` sources.
+compatibility loader) so the Clojure CLI can load the `.cljk` sources. CI does
+not run them: the JVM and nbb are not part of CI/CD, and this path is
+migration inventory (see [AGENTS.md](AGENTS.md)).
 
 See [docs/maturity.md](docs/maturity.md) for the exact R3 claim and operational
 runbook.
