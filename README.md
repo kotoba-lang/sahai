@@ -32,16 +32,27 @@ then later issued-at, then greater owner id), `claim-reason`
 or to expiry), `claimed-epoch` (holder's on renew, holder + 1 on a bumped
 steal, the request's when free) and `expired?`. Owner ids compare by bytes,
 which is the sign of the `.cljk`'s `compare` for ASCII node ids. Gate (no
-Node.js, nbb, JVM or babashka; CI runs the same script on a native arm64
-runner):
+Node.js, nbb, JVM or babashka; `.github/workflows/ci.yml` holds the same steps
+with a negative control):
 
 ```bash
 AMU=../amu; G=$(mktemp -d)   # G must be under a path podman can mount
 cp "$AMU/seed/bootstrap/aarch64-linux-static-root.elf" "$G/root.elf"
-podman run --rm --platform linux/arm64 --network none -v "$PWD:/src:ro" \
-  -v "$G:$G" -w /src docker.io/library/python:3.12-alpine \
-  scripts/selfhost-gate.sh "$G/root.elf" kotoba/sahai/fence.kotoba
-#   → selfhost-gate: ... result=15 expect=15     (15 = all four test-* true)
+F=kotoba/sahai/fence.kotoba
+end=$(grep -n 'test-epoch\]))' $F | cut -d: -f1)
+{ echo '(ns sahai-fence-gate (:export [main]))'
+  tail -n +$((end+1)) $F
+  cat <<'EOF'
+(defn main [] :i64
+  (+ (if (test-beats) 1 0) (+ (if (test-expired) 2 0)
+  (+ (if (test-claim) 4 0) (if (test-epoch) 8 0)))))
+EOF
+} > "$G/gate.kotoba"
+podman run --rm --platform linux/arm64 --network none -e KEXE_CAP_RESOURCES_35="$G" \
+  -v "$G:$G" -w "$G" docker.io/library/python:3.12-alpine sh -c \
+  "./root.elf compile $G/gate.kotoba --target aarch64-linux --output $G/gate.elf --format static \
+   && chmod +x gate.elf && KEXE_STRUCTURED_REPORT=1 ./gate.elf"
+#   → {:status :ok :result 15 ...}      (15 = all four test-* true)
 ```
 
 Measured 2026-10-22 with the root of amu `f5b11a08` (sha256 `8256bfd8…dc7`):

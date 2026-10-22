@@ -21,7 +21,6 @@
  :negative-control {:mutation "test-claim expects an equal epoch to displace a live holder (fence/higher-epoch)"
                     :image-sha256 "275a1dadd81e31c33f13dac3188f9e142e57b28a8d151913145eda7b9c0dd414"
                     :result 11 :expected 11}
- :ci {:script "scripts/selfhost-gate.sh"
-      :runner "ubuntu-24.04-arm (native, the required check CI)"
-      :local-rehearsal "the CI steps in python:3.12-alpine (busybox sh) and ubuntu:24.04 (dash) under podman arm64: result 15, mutant 11"}
+ :ci {:workflow ".github/workflows/ci.yml (job CI, ubuntu-24.04-arm; disabled while CDCI is stopped)"
+      :local-rehearsal "the workflow's run steps in python:3.12-alpine (busybox sh) and ubuntu:24.04 (dash) under podman arm64: result 15, mutant 11; expecting 14 fails"}
  :not-run ["the JVM clojure test suite: the JVM and nbb are not part of CI/CD (AGENTS.md)"]}

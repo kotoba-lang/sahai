@@ -1,9 +1,13 @@
 name: CI
-# Amu selfhost gates only. The JVM and nbb (Node.js) are not used, so they are
-# not part of CI/CD (owner 2026-10-22; AGENTS.md). Each kotoba/**/*.kotoba
-# module's test-* are compiled by the pinned Amu root compiler into a
-# loaderless aarch64-linux static image and run on a native arm64 kernel: no
-# Node.js, nbb, JVM, babashka, C toolchain or emulation.
+# Amu selfhost gate only. The JVM and nbb (Node.js) are not used, so they are
+# not part of CI/CD (owner 2026-10-22; AGENTS.md). kotoba/sahai/fence.kotoba's
+# test-* are compiled by the pinned Amu root compiler into a loaderless
+# aarch64-linux static image and run on a native arm64 kernel: no Node.js,
+# nbb, JVM, babashka, C toolchain or emulation.
+#
+# CDCI is stopped (com-junkawasaki/root AGENTS.md) and this workflow stays
+# disabled until the owner enables it; the gate is the README's, which runs
+# the same steps locally under podman.
 on:
   pull_request:
   push:
@@ -34,29 +38,40 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/root.elf" \
             "https://raw.githubusercontent.com/kotoba-lang/amu/$AMU_COMMIT/seed/bootstrap/aarch64-linux-static-root.elf"
           echo "$AMU_ROOT_SHA256  $RUNNER_TEMP/root.elf" | sha256sum -c -
-      # Every module must carry test-*; a module without them fails the gate.
-      - name: Selfhost gates (every kotoba/ module)
+          chmod +x "$RUNNER_TEMP/root.elf"
+      # The gate keeps the module after its ns form and adds a main that sets
+      # one bit per test-*: 15 when all four hold. The negative control lets an
+      # equal epoch displace a live holder, which must clear test-claim's bit
+      # (11); a gate that cannot fail proves nothing.
+      - name: Selfhost gate and negative control
         run: |
           set -eu
-          modules=$(find kotoba -name '*.kotoba' | sort)
-          if [ -z "$modules" ]; then
-            echo "::error::no Kotoba module under kotoba/"
-            exit 1
-          fi
-          for m in $modules; do
-            scripts/selfhost-gate.sh "$RUNNER_TEMP/root.elf" "$m"
-          done
-      # A gate that cannot fail proves nothing. Letting an equal epoch displace
-      # a live holder must clear test-claim's bit: 15 -> 11.
-      - name: "Guard: negative control (mutated fence gives 11)"
-        run: |
-          set -eu
-          m="$RUNNER_TEMP/fence-mutant.kotoba"
+          G="$RUNNER_TEMP"
+          F=kotoba/sahai/fence.kotoba
           sed 's|(= (claim-reason true "n2" false 5 5 "n1") "fence/held-by-other")|(= (claim-reason true "n2" false 5 5 "n1") "fence/higher-epoch")|' \
-            kotoba/sahai/fence.kotoba > "$m"
-          if cmp -s kotoba/sahai/fence.kotoba "$m"; then
+            "$F" > "$G/mutant.kotoba"
+          if cmp -s "$F" "$G/mutant.kotoba"; then
             echo "::error::the mutation did not apply"
             exit 1
           fi
-          scripts/selfhost-gate.sh "$RUNNER_TEMP/root.elf" "$m" 11
+          for case in "$F:15" "$G/mutant.kotoba:11"; do
+            src=${case%:*} expect=${case##*:}
+            end=$(grep -n 'test-epoch\]))' "$src" | cut -d: -f1)
+            { echo '(ns sahai-fence-gate (:export [main]))'
+              tail -n +$((end + 1)) "$src"
+              echo '(defn main [] :i64'
+              echo '  (+ (if (test-beats) 1 0) (+ (if (test-expired) 2 0)'
+              echo '  (+ (if (test-claim) 4 0) (if (test-epoch) 8 0)))))'
+            } > "$G/gate-$expect.kotoba"
+            # the compiler only writes a NEW output file
+            (cd "$G" && KEXE_CAP_RESOURCES_35="$G" ./root.elf compile "$G/gate-$expect.kotoba" \
+              --target aarch64-linux --output "$G/gate-$expect.elf" --format static)
+            chmod +x "$G/gate-$expect.elf"
+            report=$(cd "$G" && KEXE_STRUCTURED_REPORT=1 "./gate-$expect.elf" 2>&1)
+            echo "$src -> $report"
+            case "$report" in
+              *":status :ok :result $expect "*) ;;
+              *) echo "::error::$src: expected :result $expect"; exit 1 ;;
+            esac
+          done
       - run: bash deploy/validate-packaging.sh
