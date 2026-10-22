@@ -1,0 +1,107 @@
+;; sahai.fence — cross-node lease fencing, as pure Kotoba decisions
+;; (com-junkawasaki/root ADR-2610222120 decision 3: the itonami gateway takes
+;; a job's exclusivity from a sahai lease, not a host file lock; Linear
+;; JUN-307, and the JVM removal of JUN-290).
+;;
+;; The rules are src/sahai/fence.cljk's, with the registry and the clock left
+;; to the caller (it passes the holder it found and the time):
+;;
+;;   beats?          a higher epoch wins; equal epoch: the later issued-at;
+;;                   then the greater owner id
+;;   claim-reason    no holder -> free; the holder is this node -> renew;
+;;                   the holder expired -> steal-expired; a strictly higher
+;;                   epoch -> higher-epoch; otherwise held-by-other. A live
+;;                   holder is displaced only by a strictly higher epoch or
+;;                   by expiry; issued-at and owner break ties for merges only
+;;   claimed-epoch   the epoch the claimed lease carries: the holder's on
+;;                   renew, holder + 1 on a steal (when bumping), the
+;;                   request's when free
+;;
+;; Owner ids compare by bytes (string-compare); for ASCII node ids that is the
+;; sign of the .cljk's `compare`. A missing epoch is 1, as in the .cljk.
+;;
+;; Written in the Amu selfhost seed subset (no ns docstring, no fn literal,
+;; declared result types); README "Fencing in Kotoba" has the gate.
+(ns sahai.fence
+  (:export [epoch-or-default beats? expired? claim-reason claim-ok? claimed-epoch
+            test-beats test-expired test-claim test-epoch]))
+
+;; ---------------------------------------------------------------------------
+;; Reason literals. Pinned contract: callers match on these exact strings.
+
+;; an absent epoch (0) is 1
+(defn epoch-or-default [e :i64] :i64 (if (< e 1) 1 e))
+
+(defn beats? [ea0 :i64 ia :i64 oa :string eb0 :i64 ib :i64 ob :string] :bool
+  (let [ea (epoch-or-default ea0) eb (epoch-or-default eb0)]
+    (cond (> ea eb) true
+          (< ea eb) false
+          (> ia ib) true
+          (< ia ib) false
+          :else (> (string-compare oa ob) 0))))
+
+;; status :expired, or the clock reached expires-at
+(defn expired? [status-expired :bool expires-at :i64 now :i64] :bool
+  (if status-expired true (>= now expires-at)))
+
+(defn claim-reason [has-holder :bool holder-owner :string holder-expired :bool
+                    holder-epoch :i64 req-epoch :i64 node :string] :string
+  (cond (not has-holder) "fence/free"
+        (= holder-owner node) "fence/renew"
+        holder-expired "fence/steal-expired"
+        (> (epoch-or-default req-epoch) (epoch-or-default holder-epoch)) "fence/higher-epoch"
+        :else "fence/held-by-other"))
+
+(defn claim-ok? [reason :string] :bool (not (= reason "fence/held-by-other")))
+
+;; -1 when the claim is refused
+(defn claimed-epoch [reason :string holder-epoch :i64 req-epoch :i64 bump :bool] :i64
+  (cond (= reason "fence/renew") (epoch-or-default holder-epoch)
+        (= reason "fence/steal-expired") (if bump (inc (epoch-or-default holder-epoch)) (epoch-or-default req-epoch))
+        (= reason "fence/higher-epoch") (if bump (inc (epoch-or-default holder-epoch)) (epoch-or-default req-epoch))
+        (= reason "fence/free") (epoch-or-default req-epoch)
+        :else -1))
+
+;; ---------------------------------------------------------------------------
+;; test-* : zero-arity, true when every assertion holds.
+
+(defn test-beats [] :bool
+  (if (and (beats? 2 0 "a" 1 9 "z")
+           (not (beats? 1 9 "z" 2 0 "a"))
+           (beats? 3 200 "a" 3 100 "z")
+           (not (beats? 3 100 "z" 3 200 "a"))
+           (beats? 3 100 "node-b" 3 100 "node-a")
+           (not (beats? 3 100 "node-a" 3 100 "node-b"))
+           (not (beats? 3 100 "node-a" 3 100 "node-a"))
+           ;; a missing epoch is 1
+           (not (beats? 0 0 "a" 1 0 "a"))
+           (beats? 0 1 "a" 1 0 "a")) true false))
+
+(defn test-expired [] :bool
+  (if (and (expired? true 9999 0)
+           (expired? false 100 100)
+           (expired? false 100 101)
+           (not (expired? false 100 99))) true false))
+
+(defn test-claim [] :bool
+  (if (and (= (claim-reason false "" false 0 1 "n1") "fence/free")
+           (= (claim-reason true "n1" false 5 1 "n1") "fence/renew")
+           ;; renew wins even when the holder already expired
+           (= (claim-reason true "n1" true 5 1 "n1") "fence/renew")
+           (= (claim-reason true "n2" true 5 1 "n1") "fence/steal-expired")
+           (= (claim-reason true "n2" false 5 6 "n1") "fence/higher-epoch")
+           (= (claim-reason true "n2" false 5 5 "n1") "fence/held-by-other")
+           (= (claim-reason true "n2" false 5 4 "n1") "fence/held-by-other")
+           (= (claim-reason true "n2" false 0 1 "n1") "fence/held-by-other")
+           (claim-ok? "fence/free") (claim-ok? "fence/renew")
+           (not (claim-ok? "fence/held-by-other"))) true false))
+
+(defn test-epoch [] :bool
+  (if (and (= (claimed-epoch "fence/renew" 5 9 true) 5)
+           (= (claimed-epoch "fence/steal-expired" 5 1 true) 6)
+           (= (claimed-epoch "fence/steal-expired" 5 1 false) 1)
+           (= (claimed-epoch "fence/higher-epoch" 5 7 true) 6)
+           (= (claimed-epoch "fence/higher-epoch" 5 7 false) 7)
+           (= (claimed-epoch "fence/free" 0 0 true) 1)
+           (= (claimed-epoch "fence/free" 0 4 true) 4)
+           (= (claimed-epoch "fence/held-by-other" 5 5 true) -1)) true false))
